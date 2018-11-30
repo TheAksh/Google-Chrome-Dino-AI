@@ -8,16 +8,19 @@ OBSTACLE_CLASS_ID = 2
 BIRD_CLASS_ID = 3
 OVER_CLASS_ID = 4
 
-def rundetection():
+graph_def = None
+
+
+def setup_detection_environment():
     # Read the graph.
     with tf.gfile.FastGFile('frozen_inference_graph.pb', 'rb') as f:
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
         tf.summary.FileWriter('logs', graph_def)
 
+def run_detection(encoded_image):
     count = 1
     with tf.Session() as sess:
-
         # Restore session
         sess.graph.as_default()
         tf.import_graph_def(graph_def, name='')
@@ -30,7 +33,7 @@ def rundetection():
 
         count = count + 1
         # capture frames
-        img = cv.imread('game.png')
+        img = cv.imdecode(encoded_image)
         print('loop took {} seconds'.format(time.time() - last_time))
         last_time = time.time()
         # cv2.imshow('window', cv2.cvtColor(printscreen, cv2.COLOR_BGR2RGB))
@@ -48,7 +51,8 @@ def rundetection():
                         tensor_detection_scores,
                         tensor_detection_boxes,
                         tensor_detection_classes],
-                       feed_dict={'image_tensor:0': inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
+                       feed_dict={
+                           'image_tensor:0': inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
 
         # Visualize detected bounding boxes.
         num_detections = int(out[0][0])
@@ -84,6 +88,3 @@ def rundetection():
 
         cv.imwrite('game-res' + str(count) + '.png', img)
 
-
-if __name__ == '__main__':
-    rundetection()
