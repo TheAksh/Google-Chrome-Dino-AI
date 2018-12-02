@@ -13,7 +13,7 @@ OVER_CLASS_ID = 4
 
 def setup_detection_environment():
     # Read the graph.
-    with tf.gfile.FastGFile('frozen_inference_graph_v1.pb', 'rb') as f:
+    with tf.gfile.FastGFile('frozen_inference_graph_v5.pb', 'rb') as f:
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
         tf.summary.FileWriter('logs', graph_def)
