@@ -16,7 +16,7 @@ def setup_detection_environment():
     with tf.gfile.FastGFile('frozen_inference_graph_v5.pb', 'rb') as f:
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
-        tf.summary.FileWriter('logs', graph_def)
+        tf.summary.FileWriter('logs' , graph_def)
         return graph_def
 
 
@@ -28,66 +28,73 @@ def start_session(graph_def):
         return sess
 
 
-def run_detection(sess, frame):
-    start_time = time.time()
+class Detector:
 
-    tensor_num_detections = sess.graph.get_tensor_by_name('num_detections:0')
-    tensor_detection_scores = sess.graph.get_tensor_by_name('detection_scores:0')
-    tensor_detection_boxes = sess.graph.get_tensor_by_name('detection_boxes:0')
-    tensor_detection_classes = sess.graph.get_tensor_by_name('detection_classes:0')
+    def __init__(self):
+        self.count = 0
 
-    img = frame
-    rows = img.shape[0]
-    cols = img.shape[1]
-    inp = cv.resize(img, (512, 512))
-    inp = inp[:, :, [2, 1, 0]]  # BGR2RGB
+    def run_detection(self, sess, frame):
+        self.count = self.count + 1
+        start_time = time.time()
+        tensor_num_detections = sess.graph.get_tensor_by_name('num_detections:0')
+        tensor_detection_scores = sess.graph.get_tensor_by_name('detection_scores:0')
+        tensor_detection_boxes = sess.graph.get_tensor_by_name('detection_boxes:0')
+        tensor_detection_classes = sess.graph.get_tensor_by_name('detection_classes:0')
 
-    # Run the model
+        img = frame
+        rows = img.shape[0]
+        cols = img.shape[1]
+        inp = cv.resize(img, (512, 512))
+        inp = inp[:, :, [2, 1, 0]]  # BGR2RGB
+        # Run the model
 
-    out = sess.run([tensor_num_detections, tensor_detection_scores, tensor_detection_boxes, tensor_detection_classes],
-                   feed_dict={'image_tensor:0': inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
+        out = sess.run([tensor_num_detections, tensor_detection_scores, tensor_detection_boxes, tensor_detection_classes],
+                       feed_dict={'image_tensor:0': inp.reshape(1, inp.shape[0], inp.shape[1], 3)})
 
-    # Visualize detected bounding boxes.
-    num_detections = int(out[0][0])
-    dino_position = None
-    obstacles = []
-    is_game_over = False
-    for i in range(num_detections):
-        score = float(out[1][0][i])
-        idx = int(out[3][0][i])
-        if score > 0.3:
-            bbox = [float(v) for v in out[2][0][i]]
-            left = bbox[1] * cols
-            top = bbox[0] * rows
-            right = bbox[3] * cols
-            bottom = bbox[2] * rows
+        # Visualize detected bounding boxes.
+        num_detections = int(out[0][0])
+        dino_position = None
+        obstacles = []
+        is_game_over = False
+        for i in range(num_detections):
+            score = float(out[1][0][i])
+            idx = int(out[3][0][i])
+            if score > 0.3:
+                bbox = [float(v) for v in out[2][0][i]]
+                left = bbox[1] * cols
+                top = bbox[0] * rows
+                right = bbox[3] * cols
+                bottom = bbox[2] * rows
 
-            rect_color = (255, 0, 0)
-            if idx == DINO_CLASS_ID:
-                dino_position = (right, bottom)
-            elif idx == OBSTACLE_CLASS_ID or idx == BIRD_CLASS_ID:
-                obstacles.append((left, bottom))
-                rect_color = (0, 255, 0)
-            elif idx == OVER_CLASS_ID:
-                is_game_over = True
-                rect_color = (0, 0, 255)
-                break
+                rect_color = (255, 0, 0)
+                if idx == DINO_CLASS_ID:
+                    dino_position = (right, bottom)
+                elif idx == OBSTACLE_CLASS_ID or idx == BIRD_CLASS_ID:
+                    obstacles.append((left, bottom))
+                    rect_color = (0, 255, 0)
+                elif idx == OVER_CLASS_ID:
+                    is_game_over = True
+                    rect_color = (0, 0, 255)
+                    cv.rectangle(img, (int(left), int(top)), (int(right), int(bottom)), rect_color, thickness=2)
+                    cv.imwrite('screenshots/img' + str(self.count) + '.png', img)
+                    break
 
-            cv.rectangle(img, (int(left), int(top)), (int(right), int(bottom)), rect_color, thickness=2)
+                cv.rectangle(img, (int(left), int(top)), (int(right), int(bottom)), rect_color, thickness=2)
+                cv.imwrite('screenshots/img' + str(self.count) + '.png', img)
 
-    closest_obstacle_position = None
-    cv.imwrite('screenshots/img' + str(time.time() * 10000) + '.png', img)
+        closest_obstacle_position = None
 
-    if not is_game_over:
-        min_dist = float("Inf")
-        for obstacle_position in obstacles:
-            o_pos = obstacle_position[0]
-            d_pos = dino_position[0]
-            x_dist = o_pos - d_pos
-            if 0 <= x_dist < min_dist:
-                min_dist = x_dist
-                closest_obstacle_position = obstacle_position
+        if not is_game_over:
+            if dino_position is not None:
+                min_dist = float("Inf")
+                for obstacle_position in obstacles:
+                    o_pos = obstacle_position[0]
+                    d_pos = dino_position[0]
+                    x_dist = o_pos - d_pos
+                    if 10 <= x_dist < min_dist:
+                        min_dist = x_dist
+                        closest_obstacle_position = obstacle_position
 
-    print('Detection loop took {} seconds'.format(time.time() - start_time))
+        print('Detection loop took {} seconds'.format(time.time() - start_time))
 
-    return LearningAgent.GameState(dino_position, closest_obstacle_position, is_game_over)
+        return LearningAgent.GameState(dino_position, closest_obstacle_position, is_game_over)

@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from PIL import ImageGrab
 from mss import mss
-from pyautogui import press, typewrite, hotkey
+from pyautogui import press, typewrite, hotkey, click
 
 
 def open_chrome():
@@ -22,8 +22,9 @@ def open_chrome():
     typewrite(url, interval=0.01)
     press('enter')
     time.sleep(0.2)
+    click(960, 960)
     press('space')
-    time.sleep(2)
+    time.sleep(3)
 
 
 def screen_record_basic():
@@ -52,8 +53,6 @@ def screen_record():
 
 # -----
 mon = {'top': 160, 'left': 160, 'width': 200, 'height': 200}
-
-
 
 
 def screen_record_plus():
