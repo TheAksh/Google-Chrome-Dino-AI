@@ -1,6 +1,7 @@
 # Google Chrome Dino AI
 
-A reinforcement learning based AI Agent that plays the Dino game on Google Chrome browser.
+A reinforcement learning based AI Agent that plays the Dino game on Google Chrome browser. [Talk is cheap. Show me the code.] (https://github.com/TheAksh/Google-Chrome-Dino-AI/)
+### Development is in progress...
 
 ## What?
 
